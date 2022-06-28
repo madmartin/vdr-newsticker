@@ -48,7 +48,7 @@ void rightcopy(char* input,char* output,int pos)
 bool strloadfile(char* file,char* output)
 {
 	//int count = 0;
-	ifstream fin(file);
+	std::ifstream fin(file);
 	if(fin)
 	{
 		char ch;
@@ -73,7 +73,7 @@ bool strloadfile(char* file,char* output)
 int getfilestringlength(char* filename)
 {
 	int count = 0;
-	ifstream fin(filename);
+	std::ifstream fin(filename);
 	if(fin)
 	{
 		char ch;

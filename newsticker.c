@@ -98,7 +98,7 @@ public:
   void Show(void) {Start(); }
   eOSState ProcessKey(eKeys Key);
   int scrollMessage(char* message, int speed, int position, cOsd *osd, tColor ColorFg, tColor ColorBg, eDvbFont font);
-  cOsd* cOSDNewsticker::createOSDLine(int row, eDvbFont font);
+  cOsd* createOSDLine(int row, eDvbFont font);
   };
 
 cOSDNewsticker::cOSDNewsticker(void)

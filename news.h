@@ -20,8 +20,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <iostream.h>
-#include <fstream.h>
+#include <iostream>
+#include <fstream>
 
 #define INT_SIZEOFBUF 300 * 1024 // Buffer 200Kb 
 
