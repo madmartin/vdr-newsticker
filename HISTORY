@@ -1,0 +1,15 @@
+VDR Plugin 'newsticker' Revision History
+-------------------------------------
+
+2003-11-22: Version 0.0.1
+
+- Initial revision.
+
+2003-11-26: Version 0.0.2
+
+- Now using wget
+- Added support for local files
+
+2003-11-26: Version 0.0.2
+
+- Added an option to control the output folder
