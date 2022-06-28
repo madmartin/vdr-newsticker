@@ -181,6 +181,7 @@ bool cNews::downloadRDF(char* url, const char *plugin_Name, char *option_savePat
 		if(!MyConfigDir)
 			dsyslog("Error getting the config directory!");
 		sprintf(tmpSystem, "wget -O %s/newsticker.rdf -o %s/newsticker.log -T 5 %s",MyConfigDir, MyConfigDir, url);
+		//dsyslog("newsticker: %s" , tmpSystem);
 		 
 		int dow_i = system (tmpSystem);
 		if (dow_i == -1)
@@ -192,7 +193,8 @@ bool cNews::downloadRDF(char* url, const char *plugin_Name, char *option_savePat
 		
 		//int i = 0;
 		
-		sprintf(tmpSystem, "%s/newsticker.rdf", MyConfigDir);		
+		sprintf(tmpSystem, "%s/newsticker.rdf", MyConfigDir);
+		//dsyslog("newsticker: %s" , tmpSystem);
 		iFileSize = getfilestringlength(tmpSystem);
 		
 		//clean the buffer
@@ -214,7 +216,7 @@ bool cNews::downloadRDF(char* url, const char *plugin_Name, char *option_savePat
 	{
 		//int i = 0;
 		strncpy(URL_file, url + strlen(URL_file_start), strlen(url) - strlen(URL_file_start));
-		dsyslog("Newsticker loading file %s", URL_file);
+		//dsyslog("Newsticker loading file %s", URL_file);
 		
 		iFileSize = getfilestringlength(URL_file);
 		

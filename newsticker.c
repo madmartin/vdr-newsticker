@@ -17,7 +17,7 @@
 
 #define scrollstart
 
-static const char *VERSION        = "0.0.3";
+static const char *VERSION        = "0.0.4";
 static const char *DESCRIPTION    = "Newsticker for VDR";
 static const char *MAINMENUENTRY  = "Newsticker";
 
@@ -27,6 +27,8 @@ char *option_savePath;
 int speed = 5;
 int lineRow = 520;
 int scrollsteps = 2;
+int colortext = 9;
+int colorbg   = 1;
 
 char url_1[100]="http://www.tagesschau.de/newsticker.rdf";
 char url_2[100]="http://www.heise.de/newsticker/heise.rdf";
@@ -37,16 +39,34 @@ char url_6[100]="http://www.netphoenix.at/rss/shortnews.php";
 char url_7[100]="http://slashdot.org/slashdot.rdf";
 char url_8[100]="http://www.n24.de/rss/?rubrik=sport";
 char url_9[100]="http://www.n24.de/rss/?rubrik=home";
+
+struct tMyColor
+{
+	char*  Name;
+	tColor Color;
+};
+
+static const tMyColor MyColors[] = {{"Transparent", clrTransparent},
+																		{"Gray",        clrGray50     },
+																		{"Black",       clrBlack      },
+																		{"Red",         clrRed        },
+																		{"Green",       clrGreen      },
+																		{"Yellow",      clrYellow     },
+																		{"Magenta",     clrMagenta    },
+																		{"Blue",        clrBlue       },
+																		{"Cyan",        clrCyan       },
+																		{"White",       clrWhite      }};
 // --- cLineGame -------------------------------------------------------------
 
 class cOSDNewsticker : public cThread, public cOsdObject {
 private:
-  cOsdBase *osd;
+  cOsd *osd;
   eKeys LastKey;
   bool running, shutdown, downloading;
   int x;
   int y;
-  eDvbColor color;
+  tColor colorFg;
+  tColor colorBg;
   
   char* theMessage;
   cNews* news;
@@ -77,8 +97,8 @@ public:
   ~cOSDNewsticker();
   void Show(void) {Start(); }
   eOSState ProcessKey(eKeys Key);
-  int scrollMessage(char* message, int speed, int position, cOsdBase *osd, eDvbColor ColorFg, eDvbColor ColorBg, eDvbFont font);
-  cOsdBase* cOSDNewsticker::createOSDLine(int row);
+  int scrollMessage(char* message, int speed, int position, cOsd *osd, tColor ColorFg, tColor ColorBg, eDvbFont font);
+  cOsd* cOSDNewsticker::createOSDLine(int row, eDvbFont font);
   };
 
 cOSDNewsticker::cOSDNewsticker(void)
@@ -89,15 +109,16 @@ cOSDNewsticker::cOSDNewsticker(void)
 	theMessage = NULL;
 	
 	x = y = 50;
-	color = clrRed;
-	//setRow(520);
+	colorFg = MyColors[colortext].Color;
+	colorBg = MyColors[colorbg].Color;
+
 	lineHeight = 300;
 	lineWidth = 700;
 	  
 	running = true;
 	shutdown = false;
 	downloading = false;
-	setRestart(true);
+	setRestart(false);//watch
 	setURL(url_1);
 	
 }
@@ -180,6 +201,7 @@ void cOSDNewsticker::setRestart(bool value)
 void cOSDNewsticker::Action(void)
 {
 	int pos;
+	//scrollMessage("Please wait ...", getSpeed(), getMessagePosition(), osd, colorFg, colorBg, fontOsd);
 	
 	if(!downloading)
 	{
@@ -188,6 +210,7 @@ void cOSDNewsticker::Action(void)
 		
 		//show Please wait
 		//scrollMessage("Please wait ...", 0, 0, osd, (eDvbColor)bgbackground, (eDvbColor)bgbackground, fontOsd);
+		//scrollMessage("Please wait ...", getSpeed(), getMessagePosition(), osd, colorFg, colorBg, fontOsd);
 		if(theMessage)
 		{
 			free(theMessage);
@@ -211,14 +234,14 @@ void cOSDNewsticker::Action(void)
 		
 		pos = 0;//lineWidth / 2;
 	        setMessagePosition(pos);	        
-	        osd = createOSDLine(getRow());
+	        osd = createOSDLine(getRow(), fontOsd);
 	        
 	        downloading = false;
 	}
         
         while (running)
 	{		
-		pos = scrollMessage(theMessage, getSpeed(), getMessagePosition(), osd, (eDvbColor)bgbackground, (eDvbColor)bgbackground, fontOsd);
+		pos = scrollMessage(theMessage, getSpeed(), getMessagePosition(), osd, colorFg, colorBg, fontOsd);
 		if (pos == 999 || getRestart() == true)
 			running = false;		
 	}
@@ -226,7 +249,7 @@ void cOSDNewsticker::Action(void)
 	if(getRestart())
 	{
 		//show Please wait
-		scrollMessage("Please wait ...", 0, 0, osd, (eDvbColor)bgbackground, (eDvbColor)bgbackground, fontOsd);
+		scrollMessage("Please wait ...", 0, 0, osd, colorFg, colorBg, fontOsd);
 	
 		setRestart(false);
 		running = true;
@@ -236,25 +259,48 @@ void cOSDNewsticker::Action(void)
 	shutdown = true;
 }
 
-cOsdBase* cOSDNewsticker::createOSDLine(int row)
+cOsd* cOSDNewsticker::createOSDLine(int row, eDvbFont font)
 {
-	int theHeigth =  ((cOsd*)osd)->LineHeight();
-	osd = cOsd::OpenRaw(theHeigth, row);
-	osd->Create(0, 0, lineWidth, theHeigth, 4);
+	int oldspeed = getSpeed();
+	setSpeed(-1);
+	
+	if(!osd)
+		osd = cOsdProvider::NewOsd(0, row);
+	else
+	{
+		delete osd;
+		osd = cOsdProvider::NewOsd(0, row);
+	}
+	const cFont *theFont = cFont::GetFont(font);
+	int theHeight = theFont->Height();
+	
+	tArea win = { 0, 0, lineWidth-1, theHeight-1, 4 };
+	//tArea win = { 0, 0, lineWidth-1, theHeight-1, 4 };
+	
+	//lets see if it works
+	if (osd->CanHandleAreas(&win, 1) == oeOk)
+		osd->SetAreas(&win, 1);
+	else
+		fprintf(stderr, "Cannot set tArea\n");
+	
+	setSpeed(oldspeed);
 	
 	return osd;
 }
 
-int cOSDNewsticker::scrollMessage(char* message, int speedvalue, int position, cOsdBase *osd, eDvbColor ColorFg, eDvbColor ColorBg, eDvbFont font)
+int cOSDNewsticker::scrollMessage(char* message, int speedvalue, int position, cOsd *osd, tColor ColorFg, tColor ColorBg, eDvbFont font)
 {
+	if (getSpeed() == -1)
+		return position;
+		
 	if(!osd)
 		return 999;
-	int theHeigth = ((cOsd*)osd)->LineHeight();
+	const cFont *theFont = cFont::GetFont(font);
+	int theHeight = theFont->Height();
 	
-	cBitmap *bitmap = new cBitmap(lineWidth, theHeigth, 4);
-	bitmap->SetFont(font);
+	cBitmap *bitmap = new cBitmap(lineWidth, theHeight, 4);
 	
-	int theWidth = bitmap->Width(message);
+	int theWidth = theFont->Width(message);
 	
 	position -= scrollsteps;
 	setMessagePosition(position);
@@ -262,9 +308,9 @@ int cOSDNewsticker::scrollMessage(char* message, int speedvalue, int position, c
 	if (position < (-theWidth+lineWidth))
 		return 999;	
 	
-	bitmap->Text(position,0,message);		
-	osd->SetBitmap(0, 0, *bitmap);
-	osd->Flush();
+	bitmap->DrawText(position, 0, message, ColorFg, ColorBg, theFont);
+	osd->DrawBitmap(0, 0, *bitmap);
+ 	osd->Flush();
 	
 	delete bitmap;
 	usleep(1000001 - (speedvalue * 100000));
@@ -277,8 +323,8 @@ eOSState cOSDNewsticker::ProcessKey(eKeys Key)
   eOSState state = cOsdObject::ProcessKey(Key);
   if (state == osUnknown) {
      switch (Key & ~k_Repeat) {
-       case kUp:     if (getRow() > 0)   setRow(getRow() - 10); createOSDLine(getRow()); break;
-       case kDown:   if (getRow() < 520) setRow(getRow() + 10); createOSDLine(getRow()); break;
+       case kUp:     if (getRow() > 0)   setRow(getRow() - 10); createOSDLine(getRow(), fontOsd); break;
+       case kDown:   if (getRow() < 520) setRow(getRow() + 10); createOSDLine(getRow(), fontOsd); break;
        case kLeft:   if (getSpeed() > 1)   setSpeed(getSpeed() - 1); break;
        case kRight:  if (getSpeed() < 10)   setSpeed(getSpeed() + 1); break;
        case KEY_1:    setURL(url_1); setRestart(true); break;
@@ -388,6 +434,8 @@ class cMenuSetupNewsticker : public cMenuSetupPage {
  	int new_speed;
  	int new_scrollsteps;
 	int new_lineRow;
+	int new_colortext;
+	int new_colorbg;
 	char* new_url_1;
 	char* new_url_2;
 	char* new_url_3;
@@ -398,13 +446,21 @@ class cMenuSetupNewsticker : public cMenuSetupPage {
 	char* new_url_8;
 	char* new_url_9;
  	
+ 	const char* myColors2[10];// = {"Transparent", "Gray", "Black", "Red", "Green", "Yellow", "Magenta", "Blue", "Cyan", "White"};
+ 	int  colorsCount;
 };
 
 cMenuSetupNewsticker::cMenuSetupNewsticker()
 {
+	colorsCount = 10;
+	for(int i = 0; i < colorsCount; i++)
+		myColors2[i] = tr(MyColors[i].Name);
+
 	new_speed = speed;
 	new_scrollsteps = scrollsteps;
 	new_lineRow = lineRow;
+	new_colortext = colortext;
+	new_colorbg = colorbg;
 	new_url_1 = url_1;
 	new_url_2 = url_2;
 	new_url_3 = url_3;
@@ -418,6 +474,8 @@ cMenuSetupNewsticker::cMenuSetupNewsticker()
 	Add(new cMenuEditIntItem(tr("Scroll speed"), &speed, 1, 10));
 	Add(new cMenuEditIntItem(tr("Scrollsteps"), &scrollsteps, 1, 20));
 	Add(new cMenuEditIntItem(tr("Row"), &lineRow, 1, 520));	
+	Add(new cMenuEditStraItem(tr("Text Color"), &colortext, colorsCount, myColors2));
+	Add(new cMenuEditStraItem(tr("Background Color"), &colorbg, colorsCount , myColors2));
 	Add(new cMenuEditStrItem(tr("URL 1"), url_1, sizeof(url_1) ,tr(FileNameChars)));
 	Add(new cMenuEditStrItem(tr("URL 2"), url_2, sizeof(url_2) ,tr(FileNameChars)));
 	Add(new cMenuEditStrItem(tr("URL 3"), url_3, sizeof(url_3) ,tr(FileNameChars)));
@@ -434,6 +492,8 @@ void cMenuSetupNewsticker::Store(void)
 	SetupStore("Scroll speed", new_speed = speed);
 	SetupStore("Scrollsteps", new_scrollsteps = scrollsteps);
 	SetupStore("Row", new_lineRow = lineRow);
+	SetupStore("Text Color", new_colortext = colortext);
+	SetupStore("Background Color", new_colorbg = colorbg);
 	SetupStore("URL 1", new_url_1 = url_1);
 	SetupStore("URL 2", new_url_2 = url_2);
 	SetupStore("URL 3", new_url_3 = url_3);
@@ -458,6 +518,8 @@ bool cPluginNewsticker::SetupParse(const char *Name, const char *Value)
   if      (!strcasecmp(Name, "Scroll speed")) speed = atoi(Value);
   else if (!strcasecmp(Name, "Scrollsteps")) scrollsteps = atoi(Value);
   else if (!strcasecmp(Name, "Row")) lineRow = atoi(Value);
+  else if (!strcasecmp(Name, "Text Color")) colortext = atoi(Value);
+  else if (!strcasecmp(Name, "Background Color")) colorbg = atoi(Value);
   else if (!strcasecmp(Name, "URL 1")) strcpy(url_1,Value);
   else if (!strcasecmp(Name, "URL 2")) strcpy(url_2,Value);
   else if (!strcasecmp(Name, "URL 3")) strcpy(url_3,Value);
